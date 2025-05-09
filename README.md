@@ -4,8 +4,8 @@
 ## Results
 ### F1 scores of different non-contextual (CV: CountVectorizer, TF-IDF: Term Frequency-Inverse Document Frequency, W2V: Word2Vector) and contextual embeddings for different supervised classifiers (LR: Logistic Regression, DT: Decision Tree, RF: Random Forest, SVM: Support Vector Machine, Xg: Xgboost)
 
-|                      Human-written                                |                 Paraphrased                             |
-|----------|-------|--------|-------|-------|-------|-------|-------|----------|--------|--------|----------|--------|--------|
+
+
 | Dataset  | Model | TF-IDF | CV    | W2V   | Glove | BERT  | ELMo  | TF-IDF  | CV    | W2V   | Glove  | BERT  | ELMo  |
 |----------|-------|--------|-------|-------|-------|-------|-------|----------|--------|--------|----------|--------|--------|
 | **Kaggle** | LR    | .943   | .948  | .829  | .855  | .916  | .882  | ↓3.60%    | ↓3.42%  | ↓1.71%  | ↓1.92%    | ↓5.46%  | ↓2.75%  |
