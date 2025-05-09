@@ -4,7 +4,9 @@
 ## Results
 ### F1 scores of different non-contextual (CV: CountVectorizer, TF-IDF: Term Frequency-Inverse Document Frequency, W2V: Word2Vector) and contextual embeddings for different supervised classifiers (LR: Logistic Regression, DT: Decision Tree, RF: Random Forest, SVM: Support Vector Machine, Xg: Xgboost)
 
-| Dataset  | Model | TF-IDF | CV    | W2V   | Glove | BERT  | ELMo  | TF-IDF ↑ | CV    | W2V   | Glove  | BERT  | ELMo  |
+
+|----------|-------|--------|-------|-------|-------|-------|-------|----------|--------|--------|----------|--------|--------|
+| Dataset  | Model | TF-IDF | CV    | W2V   | Glove | BERT  | ELMo  | TF-IDF  | CV    | W2V   | Glove  | BERT  | ELMo  |
 |----------|-------|--------|-------|-------|-------|-------|-------|----------|--------|--------|----------|--------|--------|
 | **Kaggle** | LR    | .943   | .948  | .829  | .855  | .916  | .882  | ↓3.60%    | ↓3.42%  | ↓1.71%  | ↓1.92%    | ↓5.46%  | ↓2.75%  |
 |          | DT    | .935   | .932  | .840  | .719  | .708  | .722  | ↓12.1%    | ↓11.9%  | ↓16.1%  | ↓4.69%    | ↓3.50%  | ↓3.27%  |
@@ -26,4 +28,7 @@
 |          | RF    | .899  |.900  |.868  |.871  |.868  |.821  |↓2.60%  |↓2.12%  |↓3.54%  |↓3.35%  |↓1.51%  |↑1.05% |
 |          | SVM   | .921  |.914  |.874  |.873  |.890  |.857  |↓1.42%  |↓2.27%  |↓1.86%  |↓1.75%  |↓2.59%  |↓2.27% |
 |          | Xg    |.892  |.887  |.886  |.890  |.890  |.868   |↓2.36%  |↓1.06%  |↓3.33%  |↓2.88%  |↓1.09%  |↓1.83% |
+
+
+### F1 scores of different non-contextual (CV: CountVectorizer, TF-IDF: Term Frequency-Inverse Document Frequency, W2V: Word2Vector) and contextual embeddings for different supervised classifiers (LR: Logistic Regression, DT: Decision Tree, RF: Random Forest, SVM: Support Vector Machine, Xg: Xgboost) for 2-differnt paraphrased version, one with shorter token count another with comparatively longer token count
 
