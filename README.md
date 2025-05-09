@@ -4,10 +4,9 @@
 ## Results
 ### F1 scores of different non-contextual (CV: CountVectorizer, TF-IDF: Term Frequency-Inverse Document Frequency, W2V: Word2Vector) and contextual embeddings for different supervised classifiers (LR: Logistic Regression, DT: Decision Tree, RF: Random Forest, SVM: Support Vector Machine, Xg: Xgboost)
 
-
-
-| Dataset  | Model | TF-IDF | CV    | W2V   | Glove | BERT  | ELMo  | TF-IDF  | CV    | W2V   | Glove  | BERT  | ELMo  |
+|Dataset||||**Human-written**||||||Paraphrased||||
 |----------|-------|--------|-------|-------|-------|-------|-------|----------|--------|--------|----------|--------|--------|
+|   | Model | TF-IDF | CV    | W2V   | Glove | BERT  | ELMo  | TF-IDF  | CV    | W2V   | Glove  | BERT  | ELMo  |
 | **Kaggle** | LR    | .943   | .948  | .829  | .855  | .916  | .882  | ↓3.60%    | ↓3.42%  | ↓1.71%  | ↓1.92%    | ↓5.46%  | ↓2.75%  |
 |          | DT    | .935   | .932  | .840  | .719  | .708  | .722  | ↓12.1%    | ↓11.9%  | ↓16.1%  | ↓4.69%    | ↓3.50%  | ↓3.27%  |
 |          | RF    | .926   | .914  | .830  | .850  | .853  | .828  | ↓4.08%    | ↓2.36%  | ↓2.51%  | ↓4.47%    | ↓4.39%  | ↓1.17%  |
