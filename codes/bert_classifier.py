@@ -8,20 +8,28 @@ Created on Sun Oct 13 15:08:59 2024
 """
 
 from transformers import DistilBertTokenizer
-from transformers import DistilBertForSequenceClassification, AdamW, DistilBertConfig
+from transformers import DistilBertForSequenceClassification, DistilBertConfig
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+from torch.optim import AdamW
 import torch
 import random
 import numpy as np
 from sklearn.model_selection import train_test_split
 import time
-import matplotlib as plt
+import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
-
+import scipy as sp
 
 import pandas as pd
 import load_data
+import shap
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import coding.explainability.shap_important_words as shap_important_words
+import variables
+import save_results
 
 
 seed_val = 42
@@ -33,7 +41,7 @@ torch.cuda.manual_seed_all(seed_val)
 
 learning_rate = 1e-5
 adam_epsilon = 1e-8
-num_epochs = 5
+num_epochs = 10
 
 
 
@@ -65,10 +73,13 @@ def bert_data_prep(X_train, y_train, X_val, y_val, X_test, y_test):
   sum([1 for i in range(len(test_text_lengths)) if test_text_lengths[i] >= 300])
   
   
-  tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased', do_lower_case=True)
-  train_text_ids = [tokenizer.encode(text, max_length=300, pad_to_max_length=True) for text in texts_train]
-  val_text_ids = [tokenizer.encode(text, max_length=300, pad_to_max_length=True) for text in texts_val]
-  test_text_ids = [tokenizer.encode(text, max_length=300, pad_to_max_length=True) for text in texts_test]
+  tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+  train_text_ids = [tokenizer.encode(text, max_length=300, padding='max_length', truncation=True) 
+                  for text in texts_train]
+  val_text_ids = [tokenizer.encode(text, max_length=300, padding='max_length', truncation=True) 
+                for text in texts_val]
+  test_text_ids = [tokenizer.encode(text, max_length=300, padding='max_length', truncation=True) 
+                 for text in texts_test]
   
   
 
@@ -296,6 +307,8 @@ def test_bert_model(model, test_dataloader, device, test_y):
   print(f"Precision: {precision:.3f}")
   print(f"Recall: {recall:.3f}")
 
+  save_results.save_classification_results(test_accuracy, precision, recall, f1)
+
 
   print(classification_report(true_values, predicted_values))
   print(print(confusion_matrix(true_values, predicted_values)))
@@ -356,38 +369,56 @@ def count_unique_words(df):
     return len(unique_words)
 
 
+def f(x):
+    tv = torch.tensor([tokenizer.encode(v, padding="max_length", max_length=500, truncation=True) for v in x]).cuda()
+    outputs = model(tv)[0].detach().cpu().numpy()
+    scores = (np.exp(outputs).T / np.exp(outputs).sum(-1)).T
+    val = sp.special.logit(scores[:, 1])  # use one vs rest logit units
+    return val
+   
+
+
 
 if __name__ == "__main__":
         
     
-    dataset_name = 'TALLIP' # kaggle, liar_2, liar_6, covid-19
-    feature_choice = 'bert' # tfidf, cv, wv, bert
-    paraphraser = 'human' #  'parrot' or 'bard', 'gpt','pegasus','llama'
+    variables.dataset_name = 'election_2024' # kaggle, liar_2, liar_6, covid-19
+    variables.classifier = 'BERT'
+    variables.paraphraser = 'gemini' #  'parrot' or 'bard', 'gpt','pegasus','llama'
     language = 'English'
+    test_code = False
+    variables.sentiment = '_positive' # '_positive' or '_negative'
+    explainability = False
     
     
     text_length = 4500
     
     
     
-    if dataset_name == 'liar_6':
+    if variables.dataset_name == 'liar':
         num_labels = 6
         
     else:
         num_labels = 2
         
-    full_df, train_df, test_df, valid_df = load_data.data_load(dataset_name,num_labels,paraphraser,language)
+    full_df, train_df, test_df, valid_df = load_data.data_load(variables.dataset_name,num_labels,variables.paraphraser,language,'bert',variables.sentiment)
     
-    train_df['clean_text']=train_df['text'].apply(lambda x: load_data.clean_text(x,text_length))
-    test_df['clean_text']=test_df['text'].apply(lambda x: load_data.clean_text(x,text_length))
-    valid_df['clean_text']=valid_df['text'].apply(lambda x: load_data.clean_text(x,text_length))
+    train_df['clean_text']=train_df[variables.paraphraser].apply(lambda x: load_data.clean_text(x,text_length))
+    test_df['clean_text']=test_df[variables.paraphraser].apply(lambda x: load_data.clean_text(x,text_length))
+    valid_df['clean_text']=valid_df[variables.paraphraser].apply(lambda x: load_data.clean_text(x,text_length))
         
     total_words = count_unique_words(train_df)
 
-    X = full_df['text'].astype(str)
-    y = full_df['label']     
+    X = full_df[variables.paraphraser].astype(str)
+    y = full_df['label']  
+
+    if test_code:   
     
-    
+        # for testing:
+        train_df = train_df.head(100)
+        test_df = test_df.head(50)
+        valid_df = valid_df.head(50)
+
     
     X_train = train_df['clean_text']
     Y_train = train_df['label']
@@ -419,12 +450,77 @@ if __name__ == "__main__":
     model, train_losses, val_losses = train_bert_model(model, train_dataloader, val_dataloader, optimizer, scheduler, num_epochs, device)
     path = "Results/LLMs/"
     #save_bert_model(model, path, tokenizer,train_losses,val_losses)
-    model.save_pretrained(f"./Results/LLMs/{dataset_name}_{paraphraser}_{feature_choice}/")
+    model.save_pretrained(f"results/BERT/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_BERT_model/")
     true_values, predicted_values = test_bert_model(model, test_dataloader, device, test_y)
     cm_test = confusion_matrix(true_values, predicted_values)
     np.set_printoptions(precision=2)
     classification_results['Predicted_Labels'] = predicted_values
-    classification_results.to_excel(f"Results/LLMs/{dataset_name}_{paraphraser}_{feature_choice}_classification_results.xlsx")
+    classification_results.to_excel(f"results/BERT/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_BERT_classification_results.xlsx")
+
+
+
+    if explainability:
+        #%%
+
+        # build an explainer using a token masker
+        explainer = shap.Explainer(f, tokenizer)
+
+        # explain the model's predictions on IMDB reviews
+
+        shap_values = explainer(X_test[0:200], fixed_context=1, batch_size=2)
+        ax = shap.plots.bar(shap_values.sum(0), max_display=30)
+
+        fig = ax.figure if ax is not None else plt.gcf()
+        outpath = f"shap_output/{variables.dataset_name}/{variables.dataset_name}_{variables.paraphraser}_BERT_shap_bar.png"
+        fig.tight_layout()
+        fig.savefig(outpath, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved SHAP beeswarm to: {outpath}")
+        plt.close()
+
+
+        # # aggregate like the bar plot
+        # mean_imp_abs = shap_values.abs.mean(0)   # Explanation object
+        # mean_imp_signed = shap_values.mean(0)
+
+        # # ---- Compute importance and direction ----
+        # mean_abs_importance = np.abs(shap_values).mean(axis=0)
+        # mean_signed_importance = shap_values.mean(axis=0)
+
+        # feature_importance = pd.DataFrame({
+        #     'feature_name': mean_imp_abs.feature_names,
+        #     'mean_abs_importance': mean_imp_abs.values,
+        #     'mean_signed_importance': mean_imp_signed.values
+        # })
+
+        mean_imp = shap_values.sum(0)   # Explanation object
+
+        # grab values and names
+        vals = mean_imp.values               # shape: (num_features,)
+        names = np.array(mean_imp.feature_names)
+
+        # sort descending and take top 30
+        order = np.argsort(-vals)
+        top30_names = names[order][:30]
+        top30_vals  = vals[order][:30]
+
+        # (optional) put in a DataFrame
+        top30_df = pd.DataFrame({
+            "feature": top30_names,
+            "mean_abs_importance": top30_vals
+        })
+
+        print(top30_df)
+
+
+
+
+
+
+
+
+
+
     
     #%%
     # from transformers_interpret import SequenceClassificationExplainer

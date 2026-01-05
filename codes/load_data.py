@@ -23,15 +23,53 @@ from wordcloud import WordCloud,STOPWORDS
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize,sent_tokenize
+from datasets import load_dataset
+from sklearn.model_selection import train_test_split
 
 
 
-def data_load(dataset_name,class_number,paraphraser,language,classifier):
+def data_load(dataset_name,class_number,paraphraser,language,classifier,suffix):
 
 
-    train_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_train.csv")
-    test_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_test.csv")
-    valid_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_valid.csv")
+    if dataset_name == 'election_2024' and paraphraser == 'human':
+        # Login using e.g. `huggingface-cli login` to access this dataset
+        ds = load_dataset("newsmediabias/fake_news_elections_labelled_data")
+        print(ds)
+        print(type(ds))
+        df = pd.DataFrame(ds['train'])
+        df = df.rename(columns={"text": "human"})
+        # # First split: train (70%) and temp (30%)
+        train_df, temp_df = train_test_split(df, test_size=0.3, random_state=42)
+        # Second split: test (20%) and valid (10%) from temp (which is 30%)
+        # test_size=2/3 means test=20%, valid=10% of the original dataset
+        test_df, valid_df = train_test_split(temp_df, test_size=1/3, random_state=42)
+
+    elif dataset_name == 'election_2024' and paraphraser != 'human':
+        # df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}.csv")
+        # train_df, temp_llldf = train_test_split(df, test_size=0.3, random_state=42)
+        # test_df, valid_df = train_test_split(temp_df, test_size=1/3, random_state=42)
+        train_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_train{suffix}.csv")
+        test_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_test{suffix}.csv")
+        valid_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_valid{suffix}.csv")
+
+    elif dataset_name == 'isot':
+        fake_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_fake{suffix}.csv")
+        true_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_true{suffix}.csv")
+
+        fake_df['label'] = 0
+        true_df['label'] = 1
+
+        all_df = pd.concat([fake_df, true_df], axis=0)
+        all_df = all_df.sample(frac=1, random_state=42)
+
+        train_df, temp_df = train_test_split(all_df, test_size=0.3, random_state=42)
+        test_df, valid_df = train_test_split(temp_df, test_size=0.5, random_state=42)
+
+    else:
+
+        train_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_train{suffix}.csv")
+        test_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_test{suffix}.csv", encoding='latin1')
+        valid_df = pd.read_csv(f"Dataset/{dataset_name}/{paraphraser}/{dataset_name}_{paraphraser}_valid{suffix}.csv")
 
     print("Shape before removing NAN values")
     print(train_df.shape)
@@ -51,6 +89,9 @@ def data_load(dataset_name,class_number,paraphraser,language,classifier):
 
     merged_df = pd.concat([train_df, test_df, valid_df], axis =0 )
 
+    print("Merged dataset before any processing")
+    print(merged_df.head())
+
     if dataset_name == 'kaggle':
         
         merged_df.reset_index(inplace = True)
@@ -69,6 +110,19 @@ def data_load(dataset_name,class_number,paraphraser,language,classifier):
         1: 1,
         }
 
+    elif dataset_name == 'election_2024':
+
+        if paraphraser == 'human':
+            label_mapping = {
+            'FAKE': 0,
+            'REAL': 1,
+            }
+        else:
+            label_mapping = {
+            0: 0,
+            1: 1,
+            }
+
       
     
     ################################################################################################################################
@@ -83,7 +137,7 @@ def data_load(dataset_name,class_number,paraphraser,language,classifier):
         test_df['label'] = test_df['label'].map(label_mapping)
         valid_df['label'] = valid_df['label'].map(label_mapping)
 
-    elif dataset_name == 'covid_19':
+    elif dataset_name == 'covid-19' or dataset_name == 'isot':
          label_mapping = {
         0: 0,
         1: 1,
@@ -93,29 +147,28 @@ def data_load(dataset_name,class_number,paraphraser,language,classifier):
     elif dataset_name == 'liar_2' or dataset_name == 'liar_6'or dataset_name == 'liar':
 
         if class_number == 6:
-                    label_mapping = {
-                    'pants-fire': 0,
-                    'false': 1,
-                    'barely-true': 2,
-                    'half-true': 3,
-                    'mostly-true': 4,
-                    'true': 5}
                     
-        elif class_number == 2 and paraphraser == 'human':
+            # if paraphraser == 'human':
+            #         label_mapping = {
+            #         'pants-fire': 0,
+            #         'false': 1,
+            #         'barely-true': 2,
+            #         'half-true': 3,
+            #         'mostly-true': 4,
+            #         'true': 5}
+            # else:
+                label_mapping = {
+                0: 0,
+                1: 1,
+                2: 2,
+                3: 3,
+                4: 4,
+                5: 5
+                    }
+                    
+        elif class_number == 2:
+             
             label_mapping = {
-        'pants-fire': 0,
-        'false': 0,
-        'barely-true': 0,
-        'half-true': 1,
-        'mostly-true': 1,
-        'true': 1
-        }
-            
-        elif class_number == 2 and paraphraser != 'human':
-             
-             print("I am here")
-             
-             label_mapping = {
         0: 0,
         1: 0,
         2: 0,
@@ -123,18 +176,21 @@ def data_load(dataset_name,class_number,paraphraser,language,classifier):
         4: 1,
         5: 1
         }
-             
-    train_df['label'] = train_df['label'].map(label_mapping)
-    test_df['label'] = test_df['label'].map(label_mapping)
-    valid_df['label'] = valid_df['label'].map(label_mapping)
-    merged_df['label'] = merged_df['label'].map(label_mapping)
+            
+
+
+        
+    if classifier != "gpt_n_shot":
+        train_df['label'] = train_df['label'].map(label_mapping)
+        test_df['label'] = test_df['label'].map(label_mapping)
+        valid_df['label'] = valid_df['label'].map(label_mapping)
+        merged_df['label'] = merged_df['label'].map(label_mapping)
                     
     label_counts = merged_df['label'].value_counts()
     print(label_counts)
 
-   
-    
 
+    
               
     return merged_df, train_df, test_df, valid_df
     

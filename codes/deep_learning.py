@@ -6,15 +6,13 @@ Created on Wed Sep 18 14:43:57 2024
 
 
 """
-#%%
-import tensorflow as tf
 
-# Print TensorFlow version and check GPU availability
-print("TensorFlow version:", tf.__version__)
-print("Is GPU available:", tf.test.is_gpu_available(cuda_only=False, min_cuda_compute_capability=None))
-print("GPUs:", tf.config.list_physical_devices('GPU'))
 
 #%%
+
+from sys import prefix
+import gpu_check
+gpu_check.check_gpu_avaiability()
 
 import load_data
 
@@ -23,13 +21,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 
+
+
 from sklearn.linear_model import LogisticRegression
 
 import nltk
 
 from nltk.corpus import stopwords
 from keras.models import Sequential
-from keras_preprocessing.sequence import pad_sequences
+#from keras_preprocessing.sequence import pad_sequences
+from keras.utils import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
 from keras.layers import Embedding, LSTM, Dense, SpatialDropout1D, Conv1D, GlobalMaxPooling1D, Flatten, MaxPooling1D
 import numpy as np
@@ -37,7 +38,8 @@ import tensorflow as tf
 from collections import Counter
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from tensorflow.keras.layers import Dense, Dropout,Input
-
+import variables
+import save_results
 import pickle
 
 # import evaluate
@@ -113,7 +115,7 @@ def cnn_classifier(X_train, X_test, X_val, y_train, y_test, y_val, num_class,voc
   tokenizer.fit_on_texts(all_text.values)
   
   # Save the tokenizer
-  with open(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_CNN_tokenizer.pickle', 'wb') as handle:
+  with open(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_CNN_tokenizer.pickle', 'wb') as handle:
       pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
   # Convert texts to sequences
@@ -231,18 +233,18 @@ def cnn_classifier(X_train, X_test, X_val, y_train, y_test, y_val, num_class,voc
 
   test_df['CNN'] = y_pred_labels
 
-
+  save_results.save_classification_results(accuracy, precision, recall, f1)
 
     # Save the entire model
-  model.save(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_CNN.h5')
+  model.save(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_CNN.h5')
 
   # Save the model architecture to JSON
   model_json = model.to_json()
-  with open(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_CNN.json', 'w') as json_file:
+  with open(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_CNN.json', 'w') as json_file:
       json_file.write(model_json)
 
   # Save the weights to HDF5
-  model.save_weights(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_CNN_model.weights.h5')
+  model.save_weights(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_CNN_model.weights.h5')
 
   print(model.summary())
 
@@ -283,8 +285,8 @@ def lstm_classifier(X_train, X_test, X_val, y_train, y_test, y_val, num_class,vo
   all_text = pd.concat([X_train, X_test])
   tokenizer = Tokenizer(num_words=vocabulary_size)
   tokenizer.fit_on_texts(all_text.values)
-  
-  with open(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_LSTM_tokenizer.pickle', 'wb') as handle:
+
+  with open(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_LSTM_tokenizer.pickle', 'wb') as handle:
       pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
   # Convert texts to sequences
@@ -359,18 +361,19 @@ def lstm_classifier(X_train, X_test, X_val, y_train, y_test, y_val, num_class,vo
 
   test_df['LSTM'] = y_pred_labels
 
+  save_results.save_classification_results(accuracy, precision, recall, f1)
+
 
   # Save the entire model
-  model_lstm1.save(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_LSTM.h5')
+  model_lstm1.save(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}_LSTM.h5')
 
   # Save the model architecture to JSON
   model_json = model_lstm1.to_json()
-  with open(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_LSTM.json', 'w') as json_file:
+  with open(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}_LSTM.json', 'w') as json_file:
       json_file.write(model_json)
 
   # Save the weights to HDF5
-  model_lstm1.save_weights(f'{project}/Results/{classifier}/{dataset_name}_{paraphraser}_LSTM_model.weights.h5')
-
+  model_lstm1.save_weights(f'results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_LSTM_model.weights.h5')
 
 # def lstm2(X_train,X_valid,y_train,y_valid):
     
@@ -403,17 +406,20 @@ if __name__=="__main__":
 
 
 
-    dataset_name = 'covid-19' # 'TALLIP''liar_2','liar_6', 'kaggle', 'covid-19'
+    variables.dataset_name = 'liar' # 'TALLIP''liar_2','liar_6', 'kaggle', 'covid-19', 'election_2024
     language = "english"
-    num_class = 2 # 2, 6
-    paraphraser = 'human' # 'human', 'bard', 'parrot', 'gpt', 'pegasus','llama'
-    classifier = 'LSTM' # 'lstm', 'cnn'
+    variables.num_class = 6 # 2, 6
+    variables.paraphraser = 'gemini' # 'human', 'bard', 'parrot', 'gpt', 'pegasus','llama'
+    variables.classifier = 'LSTM' # 'lstm', 'cnn'
     project = "01_detection"
+    variables.sentiment = '_neutral' # '_positive', '_negative', ''
     
 
-    
-    full_df, train_df, test_df, valid_df = load_data.data_load(dataset_name,num_class,paraphraser,language,classifier)
-    
+    full_df, train_df, test_df, valid_df = load_data.data_load(variables.dataset_name,variables.num_class,variables.paraphraser,language,variables.classifier,variables.sentiment)
+
+
+    print(train_df.head())
+
     
     
     print("Shape before removing NAN values")
@@ -436,9 +442,9 @@ if __name__=="__main__":
     
     text_length = 1200
     
-    train_df['clean_text']=train_df['text'].apply(lambda x: load_data.clean_text(x,text_length))
-    test_df['clean_text']=test_df['text'].apply(lambda x: load_data.clean_text(x,text_length))
-    valid_df['clean_text']=valid_df['text'].apply(lambda x: load_data.clean_text(x,text_length))
+    train_df['clean_text']=train_df[variables.paraphraser].apply(lambda x: load_data.clean_text(x,text_length))
+    test_df['clean_text']=test_df[variables.paraphraser].apply(lambda x: load_data.clean_text(x,text_length))
+    valid_df['clean_text']=valid_df[variables.paraphraser].apply(lambda x: load_data.clean_text(x,text_length))
 
     
     
@@ -457,21 +463,21 @@ if __name__=="__main__":
     
     
     print("Labels: ", Y_train.unique())
-    print(X_train.values)
+    # print(X_train.values)
     
       
     
     #ros = RandomOverSampler(random_state=42)
     #X_train, Y_train = ros.fit_resample(X_train, Y_train)
     
-    if classifier == 'CNN':
-      cnn_classifier(X_train, X_test, X_val, Y_train, Y_test, Y_val,num_class,vocabulary_size,max_text_len)
-      test_df.to_excel(f"{project}/Results/{classifier}/{dataset_name}_{paraphraser}_CNN_results.xlsx")
+    if variables.classifier == 'CNN':
+      cnn_classifier(X_train, X_test, X_val, Y_train, Y_test, Y_val,variables.num_class,vocabulary_size,max_text_len)
+      test_df.to_excel(f"results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_CNN_results.xlsx")
 
     
-    elif classifier == 'LSTM':
-      lstm_classifier(X_train, X_test, X_val, Y_train, Y_test, Y_val,num_class,vocabulary_size,max_text_len)
-      test_df.to_excel(f"{project}/Results/{classifier}/{dataset_name}_{paraphraser}_LSTM_results.xlsx")
+    elif variables.classifier == 'LSTM':
+      lstm_classifier(X_train, X_test, X_val, Y_train, Y_test, Y_val,variables.num_class,vocabulary_size,max_text_len)
+      test_df.to_excel(f"results/{variables.classifier}/{variables.dataset_name}_{variables.paraphraser}{variables.sentiment}_LSTM_results.xlsx")
 
 
 
