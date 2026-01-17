@@ -3,7 +3,6 @@
 """
 Created on Thu Oct  3 23:40:28 2024
 
-@author: rupak_das18
 """
 
 
